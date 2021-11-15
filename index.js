@@ -26,7 +26,8 @@ async function run(){
         const database = client.db('maxWheels');
         const purchasedCollection = database.collection('purchased');
         const carsCollection = database.collection('car');
-        const reviewsCollection = database.collection("reviews")
+        const reviewsCollection = database.collection("reviews");
+        const usersCollection = database.collection('users')
 
         // Post New Car 
         app.post('/cars', async(req, res) => {
@@ -81,6 +82,90 @@ async function run(){
         app.get('/purchased', async(req, res) => {
           const result = await purchasedCollection.find({}).toArray();
           res.json(result);
+        })
+
+        // Delete Order 
+        app.delete('/deleteOrder/:id', async (req, res) => {
+            const result = await purchasedCollection.deleteOne({
+              _id: ObjectId(req.params.id),
+            });
+            res.json(result);
+            console.log(result)
+        })
+
+        // Delete Car 
+        app.delete('/deleteCar/:id', async (req, res) => {
+            const result = await carsCollection.deleteOne({
+              _id: ObjectId(req.params.id),
+            });
+            res.json(result);
+            console.log(result)
+        })
+
+        // Get My Orders 
+         app.get("/myOrders/:email", async (req, res) => {
+           const result = await purchasedCollection
+             .find({ userEmail: req.params.email })
+             .toArray();
+           res.send(result);
+         });
+
+        //Update Status
+        app.put("/updateStatus/:id", async (req, res) => {
+          const id = req.params.id;
+          const newStatus = req.body;
+          const filter = {_id: ObjectId(id)};
+          const options = {upsert: true};
+          const updateStatus = {
+              $set: {
+                  status: newStatus[0]
+              }
+            }
+          const result = await purchasedCollection.updateOne(filter, updateStatus, options);
+          console.log(result);
+
+          res.json(result)
+        });
+
+        // Save user 
+        app.post('/users', async(req, res) => {
+          const user = req.body;
+          console.log(user)
+          const result = await usersCollection.insertOne(user);
+          res.json(result);
+        })
+
+        // Upsert User 
+        app.put('/users', async(req, res) => {
+          const user = req.body;
+          console.log(user);
+          const filter = {email: user.email};
+          const options = {upsert: true};
+
+          const updateDoc = {$set: user};
+          const result = await usersCollection.updateOne(filter, updateDoc, options);
+          res.json(result);
+        })
+
+        // Make Admin 
+        app.put('/users/admin', async(req, res) => {
+          const user = req.body;
+          const filter = {email: user.email};
+          const updateDoc = {$set: {role: 'admin'}};
+          const result = await usersCollection.updateOne(filter, updateDoc)
+          res.json(result);
+        });
+
+        // Query of Admin 
+        app.get('/users/:email', async(req, res) => {
+          const email = req.params.email;
+          const query = { email: email };
+          const user = await usersCollection.findOne(query);
+          let isAdmin = false;
+          if(user?.role === 'admin'){
+            isAdmin = true;
+          }
+          res.json({admin: isAdmin})
         })
     }finally{
         // await client.close();
